@@ -1,13 +1,14 @@
 #include "modules/memory.hpp"
 
 waybar::modules::Memory::Memory(const std::string& id, const Json::Value& config)
-    : ALabel(config, "memory", id, "{}%", 30) {
+    : AGraphLabel(config, "memory", id, "{}%", 30) {
   thread_ = [this] {
     dp.emit();
     thread_.sleep_for(interval_);
   };
 }
-
+#include <spdlog/spdlog.h>
+constexpr double toGiB(double x) { return 0.01 * round(x / 10485.76); }
 auto waybar::modules::Memory::update() -> void {
   parseMeminfo();
 
@@ -29,20 +30,38 @@ auto waybar::modules::Memory::update() -> void {
     memfree = meminfo_["MemFree"] + meminfo_["Buffers"] + meminfo_["Cached"] +
               meminfo_["SReclaimable"] - meminfo_["Shmem"] + meminfo_["zfs_size"];
   }
+  unsigned long membuffers = 0;
+  unsigned long memcached = 0;
+  unsigned long swapcached = 0;
+  if (meminfo_.contains("Buffers")) { membuffers = meminfo_["Buffers"]; }
+  if (meminfo_.contains("Cached")) { memcached = meminfo_["Cached"]; }
+  if (meminfo_.contains("SwapCached")) { swapcached = meminfo_["SwapCached"]; }
 
   if (memtotal > 0 && memfree >= 0) {
     float total_ram_gigabytes =
         0.01 * round(memtotal / 10485.76);  // 100*10485.76 = 2^20 = 1024^2 = GiB/KiB
     float total_swap_gigabytes = 0.01 * round(swaptotal / 10485.76);
-    int used_ram_percentage = 100 * (memtotal - memfree) / memtotal;
+    int used_ram_percentage = (100 * (memtotal - memfree) + memtotal - 1) / memtotal;
     int used_swap_percentage = 0;
     if (swaptotal && swapfree) {
-      used_swap_percentage = 100 * (swaptotal - swapfree) / swaptotal;
+      used_swap_percentage = (100 * (swaptotal - swapfree) + swaptotal - 1) / swaptotal;
     }
     float used_ram_gigabytes = 0.01 * round((memtotal - memfree) / 10485.76);
     float used_swap_gigabytes = 0.01 * round((swaptotal - swapfree) / 10485.76);
     float available_ram_gigabytes = 0.01 * round(memfree / 10485.76);
     float available_swap_gigabytes = 0.01 * round(swapfree / 10485.76);
+	float buffers_gib = toGiB(membuffers);
+	float cached_gib = toGiB(memcached);
+	float swapcached_gib = toGiB(swapcached);
+
+	using gda = std::array<double, 4>;
+    gda gram = { double(memtotal - memfree) / memtotal, 0, 0.8, 0.4 };
+    gda grambuff = { double(memtotal - memfree + membuffers) / memtotal, 0, 0.8, 0.6 };
+    gda gramcache = { double(memtotal - memfree + membuffers + memcached) / memtotal, 0, 1.0, 0.6 };
+    gda gswap = { double(swaptotal - swapfree) / swaptotal, 0.4, 0, 0.8 };
+    gda gswapcache = { double(swaptotal - swapfree + swapcached) / swaptotal, 0.6, 0, 1.0 };
+	updateGraph({ gramcache, grambuff, gram }, 0);
+	updateGraph({ gswapcache, gswap }, 1);
 
     auto format = format_;
     auto state = getState(used_ram_percentage);
@@ -59,6 +78,7 @@ auto waybar::modules::Memory::update() -> void {
           fmt::runtime(format), used_ram_percentage,
           fmt::arg("icon", getIcon(used_ram_percentage, icons)),
           fmt::arg("total", total_ram_gigabytes), fmt::arg("swapTotal", total_swap_gigabytes),
+          fmt::arg("buffers", buffers_gib), fmt::arg("cached", cached_gib), fmt::arg("swapcached", swapcached_gib),
           fmt::arg("percentage", used_ram_percentage),
           fmt::arg("swapPercentage", used_swap_percentage), fmt::arg("used", used_ram_gigabytes),
           fmt::arg("swapUsed", used_swap_gigabytes), fmt::arg("avail", available_ram_gigabytes),
@@ -71,6 +91,7 @@ auto waybar::modules::Memory::update() -> void {
         label_.set_tooltip_text(fmt::format(
             fmt::runtime(tooltip_format), used_ram_percentage,
             fmt::arg("total", total_ram_gigabytes), fmt::arg("swapTotal", total_swap_gigabytes),
+            fmt::arg("buffers", buffers_gib), fmt::arg("cached", cached_gib), fmt::arg("swapcached", swapcached_gib),
             fmt::arg("percentage", used_ram_percentage),
             fmt::arg("swapPercentage", used_swap_percentage), fmt::arg("used", used_ram_gigabytes),
             fmt::arg("swapUsed", used_swap_gigabytes), fmt::arg("avail", available_ram_gigabytes),

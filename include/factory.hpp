@@ -1,7 +1,6 @@
 #pragma once
 
 #include <json/json.h>
-
 #include <AModule.hpp>
 
 namespace waybar {

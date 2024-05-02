@@ -14,7 +14,7 @@
 #endif
 
 waybar::modules::Cpu::Cpu(const std::string& id, const Json::Value& config)
-    : ALabel(config, "cpu", id, "{usage}%", 10) {
+    : AGraphLabel(config, "cpu", id, "{usage}%", 10) {
   thread_ = [this] {
     dp.emit();
     thread_.sleep_for(interval_);
@@ -31,6 +31,7 @@ auto waybar::modules::Cpu::update() -> void {
   }
   auto format = format_;
   auto total_usage = cpu_usage.empty() ? 0 : cpu_usage[0];
+  updateGraph({{ total_usage * 0.01, 0.2, 0.2, 1 }});
   auto state = getState(total_usage);
   if (!state.empty() && config_["format-" + state].isString()) {
     format = config_["format-" + state].asString();

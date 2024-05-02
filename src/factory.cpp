@@ -49,6 +49,9 @@
 #if defined(HAVE_MEMORY_LINUX) || defined(HAVE_MEMORY_BSD)
 #include "modules/memory.hpp"
 #endif
+#if defined(HAVE_LINUX)
+#include "modules/diskrw.hpp"
+#endif
 #include "modules/disk.hpp"
 #ifdef HAVE_DBUSMENU
 #include "modules/sni/tray.hpp"
@@ -221,6 +224,11 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
 #if defined(HAVE_CPU_LINUX)
     if (ref == "cpu_frequency") {
       return new waybar::modules::CpuFrequency(id, config_[name]);
+    }
+#endif
+#if defined(HAVE_LINUX)
+    if (ref == "diskrw") {
+      return new waybar::modules::DiskRW(id, config_[name]);
     }
 #endif
     if (ref == "cpu_usage") {

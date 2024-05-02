@@ -1,29 +1,26 @@
 #pragma once
 
 #include <fmt/format.h>
+#include <sys/statvfs.h>
 
-#include <cstdint>
 #include <fstream>
-#include <numeric>
-#include <string>
-#include <utility>
-#include <vector>
 
 #include "AGraphLabel.hpp"
+#include "util/format.hpp"
 #include "util/sleeper_thread.hpp"
 
 namespace waybar::modules {
 
-class Cpu : public AGraphLabel<> {
+class DiskRW : public AGraphLabel<2> {
  public:
-  Cpu(const std::string&, const Json::Value&);
-  virtual ~Cpu() = default;
+  DiskRW(const std::string&, const Json::Value&);
+  virtual ~DiskRW() = default;
   auto update() -> void override;
 
  private:
-  std::vector<std::tuple<size_t, size_t>> prev_times_;
-
   util::SleeperThread thread_;
+  std::string unit_;
+  uint64_t lr_, lw_;
 };
 
 }  // namespace waybar::modules

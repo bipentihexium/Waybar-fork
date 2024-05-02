@@ -7,7 +7,7 @@
 #endif
 
 waybar::modules::Temperature::Temperature(const std::string& id, const Json::Value& config)
-    : ALabel(config, "temperature", id, "{temperatureC}°C", 10) {
+    : AGraphLabel(config, "temperature", id, "{temperatureC}°C", 10) {
 #if defined(__FreeBSD__)
 // FreeBSD uses sysctlbyname instead of read from a file
 #else
@@ -62,6 +62,8 @@ auto waybar::modules::Temperature::update() -> void {
   uint16_t temperature_f = std::round(temperature * 1.8 + 32);
   uint16_t temperature_k = std::round(temperature + 273.15);
   auto critical = isCritical(temperature_c);
+  double gcol = critical ? 1.0 : 0.2;
+  updateGraph({{ temperature_c * 0.01, 1.0, gcol, 0.2 }});
   auto format = format_;
   if (critical) {
     format = config_["format-critical"].isString() ? config_["format-critical"].asString() : format;

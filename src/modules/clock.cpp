@@ -22,7 +22,7 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
       tlpFmt_{(config_["tooltip-format"].isString()) ? config_["tooltip-format"].asString() : ""},
       cldInTooltip_{tlpFmt_.find("{" + kCldPlaceholder + "}") != std::string::npos},
       tzInTooltip_{tlpFmt_.find("{" + kTZPlaceholder + "}") != std::string::npos},
-      tzCurrIdx_{0},
+      tzCurrIdx_{0}, fdow_{config_["fdow-monday"].isBool() && config_["fdow-monday"].asBool() ? Monday : Sunday},
       ordInTooltip_{tlpFmt_.find("{" + kOrdPlaceholder + "}") != std::string::npos} {
   tlpText_ = tlpFmt_;
 
@@ -448,6 +448,7 @@ using deleting_unique_ptr = std::unique_ptr<T, deleter_from_fn<fn>>;
 
 // Computations done similarly to Linux cal utility.
 auto waybar::modules::Clock::first_day_of_week() -> weekday {
+	return fdow_;/*
 #ifdef HAVE_LANGINFO_1STDAY
   deleting_unique_ptr<std::remove_pointer<locale_t>::type, freelocale> posix_locale{
       newlocale(LC_ALL, locale_.name().c_str(), nullptr)};
@@ -458,7 +459,7 @@ auto waybar::modules::Clock::first_day_of_week() -> weekday {
     return wd + days{j - 1};
   }
 #endif
-  return Sunday;
+  return Sunday;*/
 }
 
 auto waybar::modules::Clock::get_ordinal_date(const year_month_day& today) -> std::string {

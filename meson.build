@@ -160,6 +160,7 @@ src_files = files(
     'src/factory.cpp',
     'src/AModule.cpp',
     'src/ALabel.cpp',
+    'src/AGraphLabel.cpp',
     'src/AIconLabel.cpp',
     'src/AAppIconLabel.cpp',
     'src/modules/custom.cpp',
@@ -201,6 +202,7 @@ if is_linux
     add_project_arguments('-DHAVE_CPU_LINUX', language: 'cpp')
     add_project_arguments('-DHAVE_MEMORY_LINUX', language: 'cpp')
     add_project_arguments('-DHAVE_SYSTEMD_MONITOR', language: 'cpp')
+    add_project_arguments('-DHAVE_LINUX', language: 'cpp')
     src_files += files(
         'src/modules/battery.cpp',
         'src/modules/bluetooth.cpp',
@@ -210,6 +212,7 @@ if is_linux
         'src/modules/cpu_frequency/linux.cpp',
         'src/modules/cpu_usage/common.cpp',
         'src/modules/cpu_usage/linux.cpp',
+        'src/modules/diskrw.cpp',
         'src/modules/memory/common.cpp',
         'src/modules/memory/linux.cpp',
         'src/modules/power_profiles_daemon.cpp',

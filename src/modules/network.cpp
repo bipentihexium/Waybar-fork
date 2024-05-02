@@ -78,7 +78,7 @@ waybar::modules::Network::readBandwidthUsage() {
 }
 
 waybar::modules::Network::Network(const std::string &id, const Json::Value &config)
-    : ALabel(config, "network", id, DEFAULT_FORMAT, 60),
+    : AGraphLabel(config, "network", id, DEFAULT_FORMAT, 60),
       ifid_(-1),
       family_(config["family"] == "ipv6" ? AF_INET6 : AF_INET),
       efd_(-1),
@@ -306,6 +306,8 @@ auto waybar::modules::Network::update() -> void {
 
     bandwidth_up = up_octets - bandwidth_up_total_;
     bandwidth_up_total_ = up_octets;
+    updateGraph({{ log2(bandwidth_down+1)/24, 1.0, 0.8, 0 }}, 0);
+    updateGraph({{ log2(bandwidth_up+1)/24, 1.0, 0.4, 0 }}, 1);
   }
 
   if (!alt_) {
@@ -338,18 +340,18 @@ auto waybar::modules::Network::update() -> void {
       fmt::arg("netmask", netmask_), fmt::arg("ipaddr", ipaddr_), fmt::arg("gwaddr", gwaddr_),
       fmt::arg("cidr", cidr_), fmt::arg("frequency", fmt::format("{:.1f}", frequency_)),
       fmt::arg("icon", getIcon(signal_strength_, state_)),
-      fmt::arg("bandwidthDownBits", pow_format(bandwidth_down * 8ull / interval_.count(), "b/s")),
-      fmt::arg("bandwidthUpBits", pow_format(bandwidth_up * 8ull / interval_.count(), "b/s")),
+      fmt::arg("bandwidthDownBits", pow_format(bandwidth_down * 8ull / interval_.count(), "b")),
+      fmt::arg("bandwidthUpBits", pow_format(bandwidth_up * 8ull / interval_.count(), "b")),
       fmt::arg("bandwidthTotalBits",
-               pow_format((bandwidth_up + bandwidth_down) * 8ull / interval_.count(), "b/s")),
-      fmt::arg("bandwidthDownOctets", pow_format(bandwidth_down / interval_.count(), "o/s")),
-      fmt::arg("bandwidthUpOctets", pow_format(bandwidth_up / interval_.count(), "o/s")),
+               pow_format((bandwidth_up + bandwidth_down) * 8ull / interval_.count(), "b")),
+      fmt::arg("bandwidthDownOctets", pow_format(bandwidth_down / interval_.count(), "o")),
+      fmt::arg("bandwidthUpOctets", pow_format(bandwidth_up / interval_.count(), "o")),
       fmt::arg("bandwidthTotalOctets",
-               pow_format((bandwidth_up + bandwidth_down) / interval_.count(), "o/s")),
-      fmt::arg("bandwidthDownBytes", pow_format(bandwidth_down / interval_.count(), "B/s")),
-      fmt::arg("bandwidthUpBytes", pow_format(bandwidth_up / interval_.count(), "B/s")),
+               pow_format((bandwidth_up + bandwidth_down) / interval_.count(), "o")),
+      fmt::arg("bandwidthDownBytes", pow_format(bandwidth_down / interval_.count(), "B")),
+      fmt::arg("bandwidthUpBytes", pow_format(bandwidth_up / interval_.count(), "B")),
       fmt::arg("bandwidthTotalBytes",
-               pow_format((bandwidth_up + bandwidth_down) / interval_.count(), "B/s")));
+               pow_format((bandwidth_up + bandwidth_down) / interval_.count(), "B")));
   if (text.compare(label_.get_label()) != 0) {
     label_.set_markup(text);
     if (text.empty()) {
@@ -371,18 +373,18 @@ auto waybar::modules::Network::update() -> void {
           fmt::arg("cidr", cidr_), fmt::arg("frequency", fmt::format("{:.1f}", frequency_)),
           fmt::arg("icon", getIcon(signal_strength_, state_)),
           fmt::arg("bandwidthDownBits",
-                   pow_format(bandwidth_down * 8ull / interval_.count(), "b/s")),
-          fmt::arg("bandwidthUpBits", pow_format(bandwidth_up * 8ull / interval_.count(), "b/s")),
+                   pow_format(bandwidth_down * 8ull / interval_.count(), "b")),
+          fmt::arg("bandwidthUpBits", pow_format(bandwidth_up * 8ull / interval_.count(), "b")),
           fmt::arg("bandwidthTotalBits",
-                   pow_format((bandwidth_up + bandwidth_down) * 8ull / interval_.count(), "b/s")),
-          fmt::arg("bandwidthDownOctets", pow_format(bandwidth_down / interval_.count(), "o/s")),
-          fmt::arg("bandwidthUpOctets", pow_format(bandwidth_up / interval_.count(), "o/s")),
+                   pow_format((bandwidth_up + bandwidth_down) * 8ull / interval_.count(), "b")),
+          fmt::arg("bandwidthDownOctets", pow_format(bandwidth_down / interval_.count(), "o")),
+          fmt::arg("bandwidthUpOctets", pow_format(bandwidth_up / interval_.count(), "o")),
           fmt::arg("bandwidthTotalOctets",
-                   pow_format((bandwidth_up + bandwidth_down) / interval_.count(), "o/s")),
-          fmt::arg("bandwidthDownBytes", pow_format(bandwidth_down / interval_.count(), "B/s")),
-          fmt::arg("bandwidthUpBytes", pow_format(bandwidth_up / interval_.count(), "B/s")),
+                   pow_format((bandwidth_up + bandwidth_down) / interval_.count(), "o")),
+          fmt::arg("bandwidthDownBytes", pow_format(bandwidth_down / interval_.count(), "B")),
+          fmt::arg("bandwidthUpBytes", pow_format(bandwidth_up / interval_.count(), "B")),
           fmt::arg("bandwidthTotalBytes",
-                   pow_format((bandwidth_up + bandwidth_down) / interval_.count(), "B/s")));
+                   pow_format((bandwidth_up + bandwidth_down) / interval_.count(), "B")));
       if (label_.get_tooltip_text() != tooltip_text) {
         label_.set_tooltip_markup(tooltip_text);
       }

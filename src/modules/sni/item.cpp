@@ -8,19 +8,20 @@
 #include <fstream>
 #include <map>
 
+#include "gdk/gdk.h"
 #include "util/format.hpp"
 #include "util/gtk_icon.hpp"
 
 template <>
 struct fmt::formatter<Glib::VariantBase> : formatter<std::string> {
-  bool is_printable(const Glib::VariantBase& value) {
+  bool is_printable(const Glib::VariantBase& value) const {
     auto type = value.get_type_string();
     /* Print only primitive (single character excluding 'v') and short complex types */
     return (type.length() == 1 && islower(type[0]) && type[0] != 'v') || value.get_size() <= 32;
   }
 
   template <typename FormatContext>
-  auto format(const Glib::VariantBase& value, FormatContext& ctx) {
+  auto format(const Glib::VariantBase& value, FormatContext& ctx) const {
     if (is_printable(value)) {
       return formatter<std::string>::format(static_cast<std::string>(value.print()), ctx);
     } else {
@@ -57,6 +58,8 @@ Item::Item(const std::string& bn, const std::string& op, const Json::Value& conf
   event_box.add_events(Gdk::BUTTON_PRESS_MASK | Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
   event_box.signal_button_press_event().connect(sigc::mem_fun(*this, &Item::handleClick));
   event_box.signal_scroll_event().connect(sigc::mem_fun(*this, &Item::handleScroll));
+  event_box.signal_enter_notify_event().connect(sigc::mem_fun(*this, &Item::handleMouseEnter));
+  event_box.signal_leave_notify_event().connect(sigc::mem_fun(*this, &Item::handleMouseLeave));
   // initial visibility
   event_box.show_all();
   event_box.set_visible(show_passive_);
@@ -67,6 +70,16 @@ Item::Item(const std::string& bn, const std::string& op, const Json::Value& conf
   Gio::DBus::Proxy::create_for_bus(Gio::DBus::BusType::BUS_TYPE_SESSION, bus_name, object_path,
                                    SNI_INTERFACE_NAME, sigc::mem_fun(*this, &Item::proxyReady),
                                    cancellable_, interface);
+}
+
+bool Item::handleMouseEnter(GdkEventCrossing* const& e) {
+  event_box.set_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
+  return false;
+}
+
+bool Item::handleMouseLeave(GdkEventCrossing* const& e) {
+  event_box.unset_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
+  return false;
 }
 
 void Item::onConfigure(GdkEventConfigure* ev) { this->updateImage(); }

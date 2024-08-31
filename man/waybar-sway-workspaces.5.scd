@@ -87,6 +87,7 @@ warp-on-scroll: ++
 	Regex rules to map window class to an icon or preferred method of representation for a workspace's window.
 	Keys are the rules, while the values are the methods of representation.
 	Rules may specify `class<...>`, `title<...>`, or both in order to fine-tune the matching.
+	You may assign an empty value to a rule to have it ignored from generating any representation in workspaces.
 
 *window-rewrite-default*:
 	typeof: string ++
@@ -171,6 +172,7 @@ n.b.: the list of outputs can be obtained from command line using *swaymsg -t ge
   "window-rewrite": {
     "class<firefox>": "",
     "class<kitty>": "k",
+	"title<.* - (.*) - VSCodium>": "codium $1"  // captures part of the window title and formats it into output
   }
 }
 ```

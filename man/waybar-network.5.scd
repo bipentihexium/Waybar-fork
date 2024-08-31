@@ -129,6 +129,19 @@ Addressed by *network*
 	typeof: string ++
 	This format is used when the displayed interface is disabled.
 
+*menu*: ++
+	typeof: string ++
+	Action that popups the menu.
+
+*menu-file*: ++
+	typeof: string ++
+	Location of the menu descriptor file. There need to be an element of type
+	GtkMenu with id *menu*
+
+*menu-actions*: ++
+	typeof: array ++
+	The actions corresponding to the buttons of the menu.
+
 # FORMAT REPLACEMENTS
 
 *{ifname}*: Name of the network interface.
@@ -142,6 +155,8 @@ Addressed by *network*
 *{cidr}*: The subnetmask corresponding to the IP in CIDR notation.
 
 *{essid}*: Name (SSID) of the wireless network.
+
+*{bssid}*: MAC address (BSSID) of the wireless access point.
 
 *{signalStrength}*: Signal strength of the wireless network.
 

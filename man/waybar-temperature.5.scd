@@ -25,6 +25,7 @@ Addressed by *temperature*
 *hwmon-path-abs*: ++
 	typeof: string ++
 	The path of the hwmon-directory of the device, e.g. */sys/devices/pci0000:00/0000:00:18.3/hwmon*. (Note that the subdirectory *hwmon/hwmon#*, where *#* is a number is not part of the path!) Has to be used together with *input-filename*.
+	This can also be an array of strings, for which, it just works like *hwmon-path*.
 
 *input-filename*: ++
 	typeof: string ++
@@ -109,6 +110,19 @@ Addressed by *temperature*
 	typeof: bool ++
 	default: true ++
 	Option to disable tooltip on hover.
+
+*menu*: ++
+	typeof: string ++
+	Action that popups the menu.
+
+*menu-file*: ++
+	typeof: string ++
+	Location of the menu descriptor file. There need to be an element of type
+	GtkMenu with id *menu*
+
+*menu-actions*: ++
+	typeof: array ++
+	The actions corresponding to the buttons of the menu.
 
 # FORMAT REPLACEMENTS
 

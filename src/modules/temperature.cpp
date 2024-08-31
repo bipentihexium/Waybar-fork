@@ -1,6 +1,7 @@
 #include "modules/temperature.hpp"
 
 #include <filesystem>
+#include <string>
 
 #if defined(__FreeBSD__)
 #include <sys/sysctl.h>
@@ -11,26 +12,32 @@ waybar::modules::Temperature::Temperature(const std::string& id, const Json::Val
 #if defined(__FreeBSD__)
 // FreeBSD uses sysctlbyname instead of read from a file
 #else
-  auto& hwmon_path = config_["hwmon-path"];
-  if (hwmon_path.isString()) {
-    file_path_ = hwmon_path.asString();
-  } else if (hwmon_path.isArray()) {
-    // if hwmon_path is an array, loop to find first valid item
-    for (auto& item : hwmon_path) {
-      auto path = item.asString();
-      if (std::filesystem::exists(path)) {
-        file_path_ = path;
-        break;
-      }
-    }
-  } else if (config_["hwmon-path-abs"].isString() && config_["input-filename"].isString()) {
-    for (const auto& hwmon :
-         std::filesystem::directory_iterator(config_["hwmon-path-abs"].asString())) {
-      if (hwmon.path().filename().string().starts_with("hwmon")) {
-        file_path_ = hwmon.path().string() + "/" + config_["input-filename"].asString();
-        break;
-      }
-    }
+  auto traverseAsArray = [](const Json::Value& value, auto&& check_set_path) {
+    if (value.isString())
+      check_set_path(value.asString());
+    else if (value.isArray())
+      for (const auto& item : value)
+        if (check_set_path(item.asString())) break;
+  };
+
+  // if hwmon_path is an array, loop to find first valid item
+  traverseAsArray(config_["hwmon-path"], [this](const std::string& path) {
+    if (!std::filesystem::exists(path)) return false;
+    file_path_ = path;
+    return true;
+  });
+
+  if (file_path_.empty() && config_["input-filename"].isString()) {
+    // fallback to hwmon_paths-abs
+    traverseAsArray(config_["hwmon-path-abs"], [this](const std::string& path) {
+      if (!std::filesystem::is_directory(path)) return false;
+      return std::ranges::any_of(
+          std::filesystem::directory_iterator(path), [this](const auto& hwmon) {
+            if (!hwmon.path().filename().string().starts_with("hwmon")) return false;
+            file_path_ = hwmon.path().string() + "/" + config_["input-filename"].asString();
+            return true;
+          });
+    });
   }
 
   if (file_path_.empty()) {
@@ -75,9 +82,9 @@ auto waybar::modules::Temperature::update() -> void {
   if (format.empty()) {
     event_box_.hide();
     return;
-  } else {
-    event_box_.show();
   }
+
+  event_box_.show();
 
   auto max_temp = config_["critical-threshold"].isInt() ? config_["critical-threshold"].asInt() : 0;
   label_.set_markup(fmt::format(fmt::runtime(format), fmt::arg("temperatureC", temperature_c),

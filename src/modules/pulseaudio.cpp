@@ -42,14 +42,26 @@ static const std::array<std::string, 9> ports = {
 };
 
 const std::vector<std::string> waybar::modules::Pulseaudio::getPulseIcon() const {
-  std::vector<std::string> res = {backend->getCurrentSinkName(), backend->getDefaultSourceName()};
+  std::vector<std::string> res;
+  auto sink_muted = backend->getSinkMuted();
+  if (sink_muted) {
+    res.emplace_back(backend->getCurrentSinkName() + "-muted");
+  }
+  res.push_back(backend->getCurrentSinkName());
+  res.push_back(backend->getDefaultSourceName());
   std::string nameLC = backend->getSinkPortName() + backend->getFormFactor();
   std::transform(nameLC.begin(), nameLC.end(), nameLC.begin(), ::tolower);
   for (auto const &port : ports) {
     if (nameLC.find(port) != std::string::npos) {
+      if (sink_muted) {
+        res.emplace_back(port + "-muted");
+      }
       res.push_back(port);
-      return res;
+      break;
     }
+  }
+  if (sink_muted) {
+    res.emplace_back("default-muted");
   }
   return res;
 }
@@ -94,7 +106,7 @@ auto waybar::modules::Pulseaudio::update() -> void {
     }
   } else {
     label_.get_style_context()->remove_class("source-muted");
-    if (config_["format-source-muted"].isString()) {
+    if (config_["format-source"].isString()) {
       format_source = config_["format-source"].asString();
     }
   }

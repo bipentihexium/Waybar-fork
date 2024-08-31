@@ -4,12 +4,12 @@
 
 #include <util/command.hpp>
 
-#include "gdkmm/device.h"
+#include "gtkmm/enums.h"
 #include "gtkmm/widget.h"
 
 namespace waybar {
 
-const Gtk::RevealerTransitionType getPreferredTransitionType(bool is_vertical) {
+Gtk::RevealerTransitionType getPreferredTransitionType(bool is_vertical) {
   /* The transition direction of a drawer is not actually determined by the transition type,
    * but rather by the order of 'box' and 'revealer_box':
    *   'REVEALER_TRANSITION_TYPE_SLIDE_LEFT' and 'REVEALER_TRANSITION_TYPE_SLIDE_RIGHT'
@@ -19,9 +19,9 @@ const Gtk::RevealerTransitionType getPreferredTransitionType(bool is_vertical) {
 
   if (is_vertical) {
     return Gtk::RevealerTransitionType::REVEALER_TRANSITION_TYPE_SLIDE_UP;
-  } else {
-    return Gtk::RevealerTransitionType::REVEALER_TRANSITION_TYPE_SLIDE_LEFT;
   }
+
+  return Gtk::RevealerTransitionType::REVEALER_TRANSITION_TYPE_SLIDE_LEFT;
 }
 
 Group::Group(const std::string& name, const std::string& id, const Json::Value& config,
@@ -62,6 +62,7 @@ Group::Group(const std::string& name, const std::string& id, const Json::Value& 
     const bool left_to_right = (drawer_config["transition-left-to-right"].isBool()
                                     ? drawer_config["transition-left-to-right"].asBool()
                                     : true);
+    click_to_reveal = drawer_config["click-to-reveal"].asBool();
 
     auto transition_type = getPreferredTransitionType(vertical);
 
@@ -78,30 +79,45 @@ Group::Group(const std::string& name, const std::string& id, const Json::Value& 
     } else {
       box.pack_start(revealer);
     }
-
-    addHoverHandlerTo(revealer);
   }
+
+  event_box_.add(box);
 }
 
-bool Group::handleMouseHover(GdkEventCrossing* const& e) {
-  switch (e->type) {
-    case GDK_ENTER_NOTIFY:
-      revealer.set_reveal_child(true);
-      break;
-    case GDK_LEAVE_NOTIFY:
-      revealer.set_reveal_child(false);
-      break;
-    default:
-      break;
-  }
+void Group::show_group() {
+  box.set_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
+  revealer.set_reveal_child(true);
+}
 
+void Group::hide_group() {
+  box.unset_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
+  revealer.set_reveal_child(false);
+}
+
+bool Group::handleMouseEnter(GdkEventCrossing* const& e) {
+  if (!click_to_reveal) {
+    show_group();
+  }
+  return false;
+}
+
+bool Group::handleMouseLeave(GdkEventCrossing* const& e) {
+  if (!click_to_reveal && e->detail != GDK_NOTIFY_INFERIOR) {
+    hide_group();
+  }
+  return false;
+}
+
+bool Group::handleToggle(GdkEventButton* const& e) {
+  if (!click_to_reveal || e->button != 1) {
+    return false;
+  }
+  if ((box.get_state_flags() & Gtk::StateFlags::STATE_FLAG_PRELIGHT) != 0U) {
+    hide_group();
+  } else {
+    show_group();
+  }
   return true;
-}
-
-void Group::addHoverHandlerTo(Gtk::Widget& widget) {
-  widget.add_events(Gdk::EventMask::ENTER_NOTIFY_MASK | Gdk::EventMask::LEAVE_NOTIFY_MASK);
-  widget.signal_enter_notify_event().connect(sigc::mem_fun(*this, &Group::handleMouseHover));
-  widget.signal_leave_notify_event().connect(sigc::mem_fun(*this, &Group::handleMouseHover));
 }
 
 auto Group::update() -> void {
@@ -113,17 +129,13 @@ Gtk::Box& Group::getBox() { return is_drawer ? (is_first_widget ? box : revealer
 void Group::addWidget(Gtk::Widget& widget) {
   getBox().pack_start(widget, false, false);
 
-  if (is_drawer) {
-    // Necessary because of GTK's hitbox detection
-    addHoverHandlerTo(widget);
-    if (!is_first_widget) {
-      widget.get_style_context()->add_class(add_class_to_drawer_children);
-    }
+  if (is_drawer && !is_first_widget) {
+    widget.get_style_context()->add_class(add_class_to_drawer_children);
   }
 
   is_first_widget = false;
 }
 
-Group::operator Gtk::Widget&() { return box; }
+Group::operator Gtk::Widget&() { return event_box_; }
 
 }  // namespace waybar

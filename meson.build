@@ -1,6 +1,6 @@
 project(
     'waybar', 'cpp', 'c',
-    version: '0.10.2',
+    version: '0.10.4',
     license: 'MIT',
     meson_version: '>= 0.59.0',
     default_options : [
@@ -193,6 +193,7 @@ man_files = files(
     'man/waybar-idle-inhibitor.5.scd',
     'man/waybar-image.5.scd',
     'man/waybar-states.5.scd',
+    'man/waybar-menu.5.scd',
     'man/waybar-temperature.5.scd',
 )
 
@@ -308,7 +309,9 @@ if true
         'src/modules/hyprland/language.cpp',
         'src/modules/hyprland/submap.cpp',
         'src/modules/hyprland/window.cpp',
+        'src/modules/hyprland/workspace.cpp',
         'src/modules/hyprland/workspaces.cpp',
+        'src/modules/hyprland/windowcreationpayload.cpp',
     )
     man_files += files(
         'man/waybar-hyprland-language.5.scd',
@@ -338,10 +341,7 @@ endif
 
 if (upower_glib.found() and not get_option('logind').disabled())
     add_project_arguments('-DHAVE_UPOWER', language: 'cpp')
-    src_files += files(
-        'src/modules/upower/upower.cpp',
-        'src/modules/upower/upower_tooltip.cpp',
-    )
+    src_files += files('src/modules/upower.cpp')
     man_files += files('man/waybar-upower.5.scd')
 endif
 
@@ -470,7 +470,7 @@ if get_option('experimental')
 endif
 
 cava = dependency('cava',
-                  version : '>=0.10.1',
+                  version : '>=0.10.2',
                   required: get_option('cava'),
                   fallback : ['cava', 'cava_dep'],
                   not_found_message: 'cava is not found. Building waybar without cava')

@@ -15,22 +15,30 @@
 
 namespace waybar::modules::hyprland {
 
-std::filesystem::path getSocketFolder(const char* instanceSig) {
+std::filesystem::path IPC::socketFolder_;
+
+std::filesystem::path IPC::getSocketFolder(const char* instanceSig) {
   // socket path, specified by EventManager of Hyprland
-  static std::filesystem::path socketFolder;
-  if (!socketFolder.empty()) {
-    return socketFolder;
+  if (!socketFolder_.empty()) {
+    return socketFolder_;
   }
 
-  std::filesystem::path xdgRuntimeDir = std::filesystem::path(getenv("XDG_RUNTIME_DIR"));
+  const char* xdgRuntimeDirEnv = std::getenv("XDG_RUNTIME_DIR");
+  std::filesystem::path xdgRuntimeDir;
+  // Only set path if env variable is set
+  if (xdgRuntimeDirEnv != nullptr) {
+    xdgRuntimeDir = std::filesystem::path(xdgRuntimeDirEnv);
+  }
+
   if (!xdgRuntimeDir.empty() && std::filesystem::exists(xdgRuntimeDir / "hypr")) {
-    socketFolder = xdgRuntimeDir / "hypr";
+    socketFolder_ = xdgRuntimeDir / "hypr";
   } else {
     spdlog::warn("$XDG_RUNTIME_DIR/hypr does not exist, falling back to /tmp/hypr");
-    socketFolder = std::filesystem::temp_directory_path() / "hypr";
+    socketFolder_ = std::filesystem::path("/tmp") / "hypr";
   }
-  socketFolder = socketFolder / instanceSig;
-  return socketFolder;
+
+  socketFolder_ = socketFolder_ / instanceSig;
+  return socketFolder_;
 }
 
 void IPC::startIPC() {
@@ -59,7 +67,7 @@ void IPC::startIPC() {
 
     addr.sun_family = AF_UNIX;
 
-    auto socketPath = getSocketFolder(his) / ".socket2.sock";
+    auto socketPath = IPC::getSocketFolder(his) / ".socket2.sock";
     strncpy(addr.sun_path, socketPath.c_str(), sizeof(addr.sun_path) - 1);
 
     addr.sun_path[sizeof(addr.sun_path) - 1] = 0;
@@ -86,7 +94,14 @@ void IPC::startIPC() {
       std::string messageReceived(buffer.data());
       messageReceived = messageReceived.substr(0, messageReceived.find_first_of('\n'));
       spdlog::debug("hyprland IPC received {}", messageReceived);
-      parseIPC(messageReceived);
+
+      try {
+        parseIPC(messageReceived);
+      } catch (std::exception& e) {
+        spdlog::warn("Failed to parse IPC message: {}, reason: {}", messageReceived, e.what());
+      } catch (...) {
+        throw;
+      }
 
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
@@ -133,48 +148,34 @@ void IPC::unregisterForIPC(EventHandler* ev_handler) {
 std::string IPC::getSocket1Reply(const std::string& rq) {
   // basically hyprctl
 
-  struct addrinfo aiHints;
-  struct addrinfo* aiRes = nullptr;
   const auto serverSocket = socket(AF_UNIX, SOCK_STREAM, 0);
 
   if (serverSocket < 0) {
-    spdlog::error("Hyprland IPC: Couldn't open a socket (1)");
-    return "";
-  }
-
-  memset(&aiHints, 0, sizeof(struct addrinfo));
-  aiHints.ai_family = AF_UNSPEC;
-  aiHints.ai_socktype = SOCK_STREAM;
-
-  if (getaddrinfo("localhost", nullptr, &aiHints, &aiRes) != 0) {
-    spdlog::error("Hyprland IPC: Couldn't get host (2)");
-    return "";
+    throw std::runtime_error("Hyprland IPC: Couldn't open a socket (1)");
   }
 
   // get the instance signature
   auto* instanceSig = getenv("HYPRLAND_INSTANCE_SIGNATURE");
 
   if (instanceSig == nullptr) {
-    spdlog::error("Hyprland IPC: HYPRLAND_INSTANCE_SIGNATURE was not set! (Is Hyprland running?)");
-    return "";
+    throw std::runtime_error(
+        "Hyprland IPC: HYPRLAND_INSTANCE_SIGNATURE was not set! (Is Hyprland running?)");
   }
 
   sockaddr_un serverAddress = {0};
   serverAddress.sun_family = AF_UNIX;
 
-  std::string socketPath = getSocketFolder(instanceSig) / ".socket.sock";
+  std::string socketPath = IPC::getSocketFolder(instanceSig) / ".socket.sock";
 
   // Use snprintf to copy the socketPath string into serverAddress.sun_path
   if (snprintf(serverAddress.sun_path, sizeof(serverAddress.sun_path), "%s", socketPath.c_str()) <
       0) {
-    spdlog::error("Hyprland IPC: Couldn't copy socket path (6)");
-    return "";
+    throw std::runtime_error("Hyprland IPC: Couldn't copy socket path (6)");
   }
 
   if (connect(serverSocket, reinterpret_cast<sockaddr*>(&serverAddress), sizeof(serverAddress)) <
       0) {
-    spdlog::error("Hyprland IPC: Couldn't connect to " + socketPath + ". (3)");
-    return "";
+    throw std::runtime_error("Hyprland IPC: Couldn't connect to " + socketPath + ". (3)");
   }
 
   auto sizeWritten = write(serverSocket, rq.c_str(), rq.length());
@@ -203,7 +204,13 @@ std::string IPC::getSocket1Reply(const std::string& rq) {
 }
 
 Json::Value IPC::getSocket1JsonReply(const std::string& rq) {
-  return parser_.parse(getSocket1Reply("j/" + rq));
+  std::string reply = getSocket1Reply("j/" + rq);
+
+  if (reply.empty()) {
+    return {};
+  }
+
+  return parser_.parse(reply);
 }
 
 }  // namespace waybar::modules::hyprland

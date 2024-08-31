@@ -113,6 +113,19 @@ Additionally, you can control the volume by scrolling *up* or *down* while the c
 	typeof: array ++
 	Sinks in this list will not be shown as active sink by Waybar. Entries should be the sink's description field.
 
+*menu*: ++
+	typeof: string ++
+	Action that popups the menu.
+
+*menu-file*: ++
+	typeof: string ++
+	Location of the menu descriptor file. There need to be an element of type
+	GtkMenu with id *menu*
+
+*menu-actions*: ++
+	typeof: array ++
+	The actions corresponding to the buttons of the menu.
+
 # FORMAT REPLACEMENTS
 
 *{desc}*: Pulseaudio port's description, for bluetooth it'll be the device name.
@@ -142,6 +155,8 @@ If they are found in the current PulseAudio port name, the corresponding icons w
 - *hifi*
 - *phone*
 
+Additionally, suffixing a device name or port with *-muted* will cause the icon
+to be selected when the corresponding audio device is muted. This applies to *default* as well.
 
 # EXAMPLES
 
@@ -152,10 +167,12 @@ If they are found in the current PulseAudio port name, the corresponding icons w
 	"format-muted": "",
 	"format-icons": {
 		"alsa_output.pci-0000_00_1f.3.analog-stereo": "",
+		"alsa_output.pci-0000_00_1f.3.analog-stereo-muted": "",
 		"headphones": "",
 		"handsfree": "",
 		"headset": "",
 		"phone": "",
+		"phone-muted": "",
 		"portable": "",
 		"car": "",
 		"default": ["", ""]
